@@ -1,0 +1,6 @@
+"variable" "distro" "mean" "sd" "lower" "higher"
+"1" "API" "normal" 25 5 15 40
+"2" "GOR" "normal" 500 100 10 1000
+"3" "Pressure" "normal" 4000 200 3500 5000
+"4" "Temperature" "normal" 200 10 150 250
+"5" "Water salinity" "normal" 3000 500 1000 10000
