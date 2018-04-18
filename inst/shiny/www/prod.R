@@ -7,7 +7,7 @@ data_r <- shiny::reactive({
                 fm = gsub(".*:", "", UNIQUEID),
                 wcut = bwpd / ( bwpd + bopd),
                 wor = bwpd / bopd,
-                gor = mscfd / bopd ,
+                gor = mscfd / bopd * 1000,
                 dayspermonth = lubridate::days_in_month(VOLUME_DATE)) %>%
   dplyr::group_by(UNIQUEID) %>%
   dplyr::mutate(CumOil = cumsum(bopd) / 1e3,
@@ -38,12 +38,66 @@ dataChan_r <- shiny::reactive({
 
 ###################################################################################
 
+######## Prod Stats
+datasum_r <- shiny::reactive({
+  data_r() %>%
+    dplyr::group_by(UNIQUEID) %>%
+    dplyr::summarize(WCUT = last(wcut),
+                     GOR = last(gor),
+                     CumOil = max(CumOil),
+                     CumWat = max(CumWat),
+                     CumGas = max(CumGas),
+                     Bopd = last(bopd),
+                     Bwpd = last(bwpd),
+                     Bfpd = last(bopd) + last(bwpd),
+                     Mscfd = last(mscfd))
+})
+output$plot_bar <- shiny::renderPlot({
+  datasum <- datasum_r()
+
+  oo <- order(datasum[[input$barsortvar]])
+  datasum <- datasum %>%
+    dplyr::mutate(UNIQUEID = factor(UNIQUEID, levels = UNIQUEID[oo]))
+
+  # plot1 <-
+  ggplot2::ggplot(datasum, ggplot2::aes(x = UNIQUEID, y = datasum[[input$barsortvar]])) +
+    ggplot2::geom_bar(stat = "identity") +
+    ggplot2::theme_bw() +
+    ggplot2::coord_flip() +
+    ggplot2::ylab(input$barsortvar)
+
+  # plot2 <- ggplot2::ggplot(datasum, ggplot2::aes(x = UNIQUEID, y = WCUT)) +
+  #   ggplot2::geom_bar(stat = "identity", fill = "blue") +
+  #   ggplot2::theme_bw()+
+  #   ggplot2::coord_flip()
+
+  # gridExtra::grid.arrange(plot1, plot2, ncol = 2)
+})
+output$plot_bar_fluid <- shiny::renderPlot({
+  datasum <- datasum_r()
+
+  oo <- order(datasum$Bopd)
+
+  datasum %>%
+    dplyr::select(UNIQUEID, Bopd, Bwpd) %>%
+    dplyr::mutate(UNIQUEID = factor(UNIQUEID, levels = UNIQUEID[oo])) %>%
+    reshape2::melt(id = c("UNIQUEID")) %>%
+    dplyr::mutate(fluid = factor(variable, levels = c("Bwpd", "Bopd"), ordered = TRUE)) %>%
+    ggplot2::ggplot(ggplot2::aes(x = UNIQUEID, y = value, fill = fluid)) +
+      ggplot2::geom_bar(stat = "identity") +
+      ggplot2::theme_bw() +
+      ggplot2::coord_flip() +
+      ggplot2::ylab("BFPD") +
+      ggplot2::scale_fill_manual(values = c("blue", "green"))
+})
+
+
+######## Prod Plot
+### Profiles
 output$data_summary <- shiny::renderTable({
   data <- data_r()
   head(data)
 })
-
-
 output$plot_rates <- shiny::renderPlot({
 data_r() %>%
   #dplyr::filter(lubridate::year(VOLUME_DATE) > 2016) %>%
@@ -58,8 +112,6 @@ data_r() %>%
     ggplot2::ylab("BFPD") +
     ggplot2::theme_bw()
 })
-
-
 wcut_color_r <- reactive({
   input$plot_wcut1_color
 })
@@ -71,7 +123,6 @@ output$plot_wcut1 <- shiny::renderPlot({
   ggplot2::ggplot(data, ggplot2::aes(x = CumOil, y = wcut, color = data[[color_]])) +
     ggplot2::geom_point()
 })
-
 output$plot_wcut2 <- shiny::renderPlot({
   data_r()  %>%
   dplyr::group_by(UNIQUEID) %>%
@@ -94,7 +145,6 @@ output$plot_worgor <- shiny::renderPlot({
     ggplot2::ylab("WOR  -  GOR [scf/stb]") +
     ggplot2::xlab("CumOil [Mstb]")
 })
-
 output$plot_cumgor <- shiny::renderPlot({
 ggplot2::ggplot(data_r(), ggplot2::aes(x = CumOil, y = CumGas, color = fm)) +
   ggplot2::geom_point() +
@@ -107,7 +157,6 @@ ggplot2::ggplot(data_r(), ggplot2::aes(x = CumOil, y = CumGas, color = fm)) +
   ggplot2::ylab("Cum Gas [MMcf]") +
   ggplot2::xlab("CumOil [Mstb]")
 })
-
 output$plot_gortime <- shiny::renderPlot({
 ggplot2::ggplot(data_r(), ggplot2::aes(x = VOLUME_DATE, y = gor)) +
   ggplot2::geom_line(color = "orange") +
@@ -115,7 +164,7 @@ ggplot2::ggplot(data_r(), ggplot2::aes(x = VOLUME_DATE, y = gor)) +
   ggplot2::theme_bw()
 })
 
-
+### Chan
 output$plot_chan <- shiny::renderPlot({
   data <- dataChan_r()
 

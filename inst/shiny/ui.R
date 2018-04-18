@@ -65,8 +65,14 @@ shiny::shinyUI(
       tabItem(tabName = "_prodstats",
                 tabsetPanel(
                   tabPanel("Dashboard"),
-                  tabPanel("Bar plot"
-
+                  tabPanel("Bar plot",
+                           shiny::br(),
+                           shiny::selectInput("barsortvar", "Select variable:",
+                                              c("CumOil", "CumWat", "CumGas", "Bopd", "Bfpd", "WCUT", "GOR"),
+                                              selected = "CumOil", multiple = FALSE),
+                           shiny::plotOutput("plot_bar", width = 400, height = 800),
+                           shiny::br(),
+                           shiny::plotOutput("plot_bar_fluid", width = 400, height = 800)
                            ),
                   tabPanel("Tree maps")
                 )
